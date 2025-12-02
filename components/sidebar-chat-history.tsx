@@ -26,10 +26,11 @@ function SidebarWithChatHistory() {
     setActiveConversation, 
     activeConversationId,
     addConversation,
-    deleteConversation
+    deleteConversation,
+    conversations
   } = useConversationStore()
   
-  const conversationsByPeriod = useMemo(() => getConversationsByPeriod(), [getConversationsByPeriod])
+  const conversationsByPeriod = useMemo(() => getConversationsByPeriod(), [conversations.length, activeConversationId])
 
   const handleNewChat = useCallback(() => {
     const newConversationId = addConversation({

@@ -24,10 +24,10 @@ import { useEffect, useState, type FC, memo, useCallback } from "react";
 import { useShallow } from "zustand/shallow";
 import { MarkdownText } from "./markdown-text";
 
-export const Claude: FC = () => {
+const ClaudeComponent: FC = () => {
   return (
     <ThreadPrimitive.Root className="flex h-full flex-col items-stretch bg-[#F5F5F0] p-4 font-serif dark:bg-[#2b2a27]">
-      <ThreadPrimitive.Viewport className="flex grow flex-col overflow-y-scroll">
+      <ThreadPrimitive.Viewport className="flex grow flex-col overflow-y-scroll scroll-smooth">
         <ThreadPrimitive.Messages components={{ Message: ChatMessage }} />
         <div aria-hidden="true" className="h-4" />
       </ThreadPrimitive.Viewport>
@@ -79,6 +79,8 @@ export const Claude: FC = () => {
     </ThreadPrimitive.Root>
   );
 };
+
+export const Claude = memo(ClaudeComponent);
 
 const ChatMessage: FC = memo(() => {
   const message = useAssistantState((s) => s.message);

@@ -1,7 +1,7 @@
 "use client";
 
 import { AssistantRuntimeProvider, useLocalRuntime } from "@assistant-ui/react";
-import { type FC, type PropsWithChildren, useEffect } from "react";
+import { type FC, type PropsWithChildren, useEffect, useRef, useCallback } from "react";
 import { useConversationStore } from "@/lib/conversation-store";
 
 const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
@@ -12,105 +12,167 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
     conversations 
   } = useConversationStore();
 
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const isProcessingRef = useRef(false)
+
   const runtime = useLocalRuntime({
     async run({ messages }: { messages: readonly any[] }) {
-      // Get the last user message
-      const lastMessage = messages[messages.length - 1];
+      // Prevent multiple simultaneous requests
+      if (isProcessingRef.current) {
+        throw new Error("Already processing a message")
+      }
       
-      if (lastMessage?.role === "user") {
-        const userText = lastMessage.content.find((c: any) => c.type === "text")?.text;
-        
-        // Ensure we have an active conversation
-        let conversationId = activeConversationId;
-        if (!conversationId) {
-          conversationId = addConversation({
-            title: "New Conversation",
-            messages: [],
-          });
+      isProcessingRef.current = true
+      
+      try {
+        // Cancel any previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort()
         }
-
-        // Add the user message to the conversation
-        addMessage(conversationId, {
-          role: "user",
-          content: userText || "",
-        });
-
-        try {
-          // Call our API
-          const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        
+        abortControllerRef.current = new AbortController()
+        
+        // Get the last user message
+        const lastMessage = messages[messages.length - 1];
+        
+        if (lastMessage?.role === "user") {
+          const userText = lastMessage.content.find((c: any) => c.type === "text")?.text;
+          
+          // Ensure we have an active conversation
+          let conversationId = activeConversationId;
+          if (!conversationId) {
+            conversationId = addConversation({
+              title: "New Conversation",
+              messages: [],
+            });
           }
 
-          // Handle streaming response
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-          let result = "";
-          
-          if (reader) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              
-              const chunk = decoder.decode(value);
-              const lines = chunk.split('\n');
-              
-              for (const line of lines) {
-                if (line.startsWith('0:')) {
-                  // Extract the actual message content
-                  try {
-                    const content = JSON.parse(line.substring(2));
-                    result += content;
-                  } catch {
-                    // If it's not JSON, just use the content after the colon
-                    result += line.substring(2).replace(/"/g, '');
+          // Add the user message to the conversation (non-blocking)
+          requestAnimationFrame(() => {
+            addMessage(conversationId, {
+              role: "user",
+              content: userText || "",
+            });
+          });
+
+          try {
+            // Call our API with timeout and abort signal
+            const response = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages }),
+              signal: abortControllerRef.current.signal,
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Handle streaming response with timeout
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let result = "";
+            let lastActivity = Date.now();
+            const TIMEOUT = 30000; // 30 seconds
+            
+            if (reader) {
+              while (true) {
+                const timeoutPromise = new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error("Timeout")), TIMEOUT - (Date.now() - lastActivity))
+                );
+                
+                const readPromise = reader.read();
+                const { done, value } = await Promise.race([readPromise, timeoutPromise]) as any;
+                
+                if (done) break;
+                
+                lastActivity = Date.now();
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                  if (line.startsWith('0:')) {
+                    // Extract the actual message content
+                    try {
+                      const content = JSON.parse(line.substring(2));
+                      result += content;
+                    } catch {
+                      // If it's not JSON, just use the content after the colon
+                      result += line.substring(2).replace(/"/g, '');
+                    }
                   }
                 }
               }
             }
+          
+            const assistantResponse = result || "Sorry, I couldn't process that request.";
+            
+            // Add the assistant message to the conversation (non-blocking)
+            requestAnimationFrame(() => {
+              addMessage(conversationId, {
+                role: "assistant",
+                content: assistantResponse,
+              });
+            });
+
+            return {
+              content: [{ type: "text" as const, text: assistantResponse }],
+            };
+          } catch (error: any) {
+            // Handle abort gracefully
+            if (error.name === 'AbortError') {
+              throw error;
+            }
+            
+            const errorMessage = error.message === "Timeout" 
+              ? "Request timed out. Please try again."
+              : "Sorry, I encountered an error while processing your request.";
+            
+            // Add error message to conversation (non-blocking)
+            requestAnimationFrame(() => {
+              addMessage(conversationId, {
+                role: "assistant",
+                content: errorMessage,
+              });
+            });
+
+            return {
+              content: [{ type: "text" as const, text: errorMessage }],
+            };
           }
-          
-          const assistantResponse = result || "Sorry, I couldn't process that request.";
-          
-          // Add the assistant message to the conversation
-          addMessage(conversationId, {
-            role: "assistant",
-            content: assistantResponse,
-          });
-
-          return {
-            content: [{ type: "text" as const, text: assistantResponse }],
-          };
-        } catch (error) {
-          const errorMessage = "Sorry, I encountered an error while processing your request.";
-          
-          // Add error message to conversation
-          addMessage(conversationId, {
-            role: "assistant",
-            content: errorMessage,
-          });
-
-          return {
-            content: [{ type: "text" as const, text: errorMessage }],
-          };
         }
-      }
 
-      return {
-        content: [{ type: "text" as const, text: "Hello! How can I help you today?" }],
-      };
+        return {
+          content: [{ type: "text" as const, text: "Hello! How can I help you today?" }],
+        };
+      } finally {
+        isProcessingRef.current = false
+      }
     },
   });
+
+  // Cleanup and maintenance effects
+  useEffect(() => {
+    // Cleanup old conversations periodically
+    const cleanup = () => {
+      const { cleanupOldConversations } = useConversationStore.getState()
+      cleanupOldConversations?.()
+    }
+    
+    const interval = setInterval(cleanup, 5 * 60 * 1000) // Every 5 minutes
+    
+    return () => {
+      clearInterval(interval)
+      // Cancel any ongoing request on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   // Load existing messages when active conversation changes
   useEffect(() => {
     if (!activeConversationId) {
-      // Clear the runtime when no conversation is active
       return;
     }
     

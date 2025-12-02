@@ -31,6 +31,7 @@ interface ConversationStore {
     lastMonth: Conversation[]
     older: Conversation[]
   }
+  cleanupOldConversations: () => void
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9)
@@ -102,21 +103,26 @@ export const useConversationStore = create<ConversationStore>()(
         }
 
         set((state) => {
-          const updatedConversations = state.conversations.map((conv) => {
-            if (conv.id === conversationId) {
-              const updatedMessages = [...conv.messages, message]
-              return {
-                ...conv,
-                messages: updatedMessages,
-                title: conv.messages.length === 0 ? generateTitle(updatedMessages) : conv.title,
-                updatedAt: timestamp,
-              }
-            }
-            return conv
-          })
+          const conversationIndex = state.conversations.findIndex(conv => conv.id === conversationId)
+          if (conversationIndex === -1) return state
+          
+          const updatedConversations = [...state.conversations]
+          const conversation = updatedConversations[conversationIndex]
+          
+          // Limit messages per conversation to prevent memory issues
+          const maxMessages = 100
+          const updatedMessages = [...conversation.messages, message].slice(-maxMessages)
+          
+          updatedConversations[conversationIndex] = {
+            ...conversation,
+            messages: updatedMessages,
+            title: conversation.messages.length === 0 ? generateTitle(updatedMessages) : conversation.title,
+            updatedAt: timestamp,
+          }
 
-          // Sort conversations by updatedAt (most recent first)
-          updatedConversations.sort((a, b) => b.updatedAt - a.updatedAt)
+          // Move updated conversation to top without full sort for better performance
+          const [updated] = updatedConversations.splice(conversationIndex, 1)
+          updatedConversations.unshift(updated)
 
           return { conversations: updatedConversations }
         })
@@ -143,12 +149,27 @@ export const useConversationStore = create<ConversationStore>()(
           older: [] as Conversation[],
         }
 
-        conversations.forEach((conv) => {
+        // Limit processing to prevent performance issues
+        const limitedConversations = conversations.slice(0, 200)
+        
+        limitedConversations.forEach((conv) => {
           const period = getTimePeriod(conv.updatedAt)
           grouped[period].push(conv)
         })
 
         return grouped
+      },
+
+      // Add cleanup method for old conversations
+      cleanupOldConversations: () => {
+        set((state) => {
+          const oneMonthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000)
+          const filteredConversations = state.conversations
+            .filter(conv => conv.updatedAt > oneMonthAgo || conv.id === state.activeConversationId)
+            .slice(0, 500) // Keep max 500 conversations
+          
+          return { conversations: filteredConversations }
+        })
       },
     }),
     {
