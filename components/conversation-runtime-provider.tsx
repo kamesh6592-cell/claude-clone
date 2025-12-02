@@ -1,7 +1,7 @@
 "use client";
 
 import { AssistantRuntimeProvider, useLocalRuntime } from "@assistant-ui/react";
-import { type FC, type PropsWithChildren, useEffect, useRef, useCallback } from "react";
+import { type FC, type PropsWithChildren, useEffect, useRef, useCallback, useState } from "react";
 import { useConversationStore } from "@/lib/conversation-store";
 
 const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
@@ -14,12 +14,24 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const isProcessingRef = useRef(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Initialize the runtime provider
+  useEffect(() => {
+    setIsInitialized(true)
+    return () => {
+      setIsInitialized(false)
+    }
+  }, [])
 
   const runtime = useLocalRuntime({
     async run({ messages }: { messages: readonly any[] }) {
       // Prevent multiple simultaneous requests
       if (isProcessingRef.current) {
-        throw new Error("Already processing a message")
+        console.warn("Already processing a message, skipping");
+        return {
+          content: [{ type: "text" as const, text: "Please wait for the current message to finish processing." }],
+        };
       }
       
       isProcessingRef.current = true
@@ -48,12 +60,14 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
           }
 
           // Add the user message to the conversation (non-blocking)
-          requestAnimationFrame(() => {
+          try {
             addMessage(conversationId, {
               role: "user",
               content: userText || "",
             });
-          });
+          } catch (error) {
+            console.error('Error adding user message:', error);
+          }
 
           try {
             // Call our API with timeout and abort signal
@@ -68,25 +82,26 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Handle streaming response with timeout
+            // Handle streaming response with proper timeout
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
             let result = "";
-            let lastActivity = Date.now();
             const TIMEOUT = 30000; // 30 seconds
             
             if (reader) {
+              const startTime = Date.now();
+              
               while (true) {
-                const timeoutPromise = new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error("Timeout")), TIMEOUT - (Date.now() - lastActivity))
-                );
+                // Check if we've exceeded timeout
+                if (Date.now() - startTime > TIMEOUT) {
+                  reader.cancel();
+                  throw new Error("Timeout");
+                }
                 
-                const readPromise = reader.read();
-                const { done, value } = await Promise.race([readPromise, timeoutPromise]) as any;
+                const { done, value } = await reader.read();
                 
                 if (done) break;
                 
-                lastActivity = Date.now();
                 const chunk = decoder.decode(value);
                 const lines = chunk.split('\n');
                 
@@ -108,12 +123,14 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
             const assistantResponse = result || "Sorry, I couldn't process that request.";
             
             // Add the assistant message to the conversation (non-blocking)
-            requestAnimationFrame(() => {
+            try {
               addMessage(conversationId, {
                 role: "assistant",
                 content: assistantResponse,
               });
-            });
+            } catch (error) {
+              console.error('Error adding assistant message:', error);
+            }
 
             return {
               content: [{ type: "text" as const, text: assistantResponse }],
@@ -129,12 +146,14 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
               : "Sorry, I encountered an error while processing your request.";
             
             // Add error message to conversation (non-blocking)
-            requestAnimationFrame(() => {
+            try {
               addMessage(conversationId, {
                 role: "assistant",
                 content: errorMessage,
               });
-            });
+            } catch (error) {
+              console.error('Error adding error message:', error);
+            }
 
             return {
               content: [{ type: "text" as const, text: errorMessage }],
@@ -145,8 +164,17 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
         return {
           content: [{ type: "text" as const, text: "Hello! How can I help you today?" }],
         };
+      } catch (criticalError: any) {
+        console.error('Critical error in runtime:', criticalError);
+        return {
+          content: [{ type: "text" as const, text: "Sorry, I encountered a critical error. Please refresh the page and try again." }],
+        };
       } finally {
-        isProcessingRef.current = false
+        isProcessingRef.current = false;
+        // Clear abort controller
+        if (abortControllerRef.current) {
+          abortControllerRef.current = null;
+        }
       }
     },
   });
@@ -183,6 +211,11 @@ const ConversationRuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
     // This is a limitation we'll need to work around in a future update
     
   }, [activeConversationId, conversations]);
+
+  // Don't render until initialized to prevent race conditions
+  if (!isInitialized) {
+    return <div className="flex h-full items-center justify-center">Loading...</div>
+  }
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>

@@ -94,6 +94,17 @@ export const useConversationStore = create<ConversationStore>()(
       },
 
       addMessage: (conversationId, messageData) => {
+        // Safety check to prevent duplicate messages
+        const state = get()
+        const conversation = state.conversations.find(conv => conv.id === conversationId)
+        if (conversation) {
+          const lastMessage = conversation.messages[conversation.messages.length - 1]
+          if (lastMessage && lastMessage.content === messageData.content && lastMessage.role === messageData.role) {
+            console.warn('Duplicate message detected, skipping')
+            return
+          }
+        }
+        
         const messageId = generateId()
         const timestamp = Date.now()
         const message: Message = {
@@ -104,7 +115,10 @@ export const useConversationStore = create<ConversationStore>()(
 
         set((state) => {
           const conversationIndex = state.conversations.findIndex(conv => conv.id === conversationId)
-          if (conversationIndex === -1) return state
+          if (conversationIndex === -1) {
+            console.warn(`Conversation ${conversationId} not found`)
+            return state
+          }
           
           const updatedConversations = [...state.conversations]
           const conversation = updatedConversations[conversationIndex]
