@@ -20,7 +20,7 @@ import {
   ReloadIcon,
 } from "@radix-ui/react-icons";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useState, type FC, memo, useCallback } from "react";
 import { useShallow } from "zustand/shallow";
 import { MarkdownText } from "./markdown-text";
 
@@ -80,7 +80,7 @@ export const Claude: FC = () => {
   );
 };
 
-const ChatMessage: FC = () => {
+const ChatMessage: FC = memo(() => {
   const message = useAssistantState((s) => s.message);
   
   if (!message) return null;
@@ -167,7 +167,7 @@ const ChatMessage: FC = () => {
   }
   
   return null;
-};
+});
 
 const useFileSrc = (file: File | undefined) => {
   const [src, setSrc] = useState<string | undefined>(undefined);

@@ -75,7 +75,7 @@ export const useConversationStore = create<ConversationStore>()(
         }
 
         set((state) => ({
-          conversations: [newConversation, ...state.conversations],
+          conversations: [newConversation, ...state.conversations.slice(0, 999)], // Limit to 1000 conversations
           activeConversationId: id,
         }))
 

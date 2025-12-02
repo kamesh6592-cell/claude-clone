@@ -9,8 +9,9 @@ import {
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
-import { type FC, memo, useState } from "react";
+import { type FC, memo, useState, useMemo } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
+import { CodeBlock, CodeBlockCode, CodeBlockGroup } from "@/components/ui/code-block";
 
 import { cn } from "@/lib/utils";
 
@@ -50,15 +51,17 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   };
 
   return (
-    <div className="aui-code-header-root mt-4 flex items-center justify-between gap-4 rounded-t-lg bg-muted-foreground/15 px-4 py-2 font-semibold text-foreground text-sm dark:bg-muted-foreground/20">
-      <span className="aui-code-header-language lowercase [&>span]:text-xs">
-        {language}
-      </span>
+    <CodeBlockGroup className="border-border border-b py-2 pr-2 pl-4">
+      <div className="flex items-center gap-2">
+        <div className="bg-primary/10 text-primary rounded px-2 py-1 text-xs font-medium">
+          {language || 'code'}
+        </div>
+      </div>
       <TooltipIconButton tooltip="Copy" onClick={onCopy}>
-        {!isCopied && <CopyIcon />}
-        {isCopied && <CheckIcon />}
+        {!isCopied && <CopyIcon className="h-4 w-4" />}
+        {isCopied && <CheckIcon className="h-4 w-4 text-green-500" />}
       </TooltipIconButton>
-    </div>
+    </CodeBlockGroup>
   );
 };
 
@@ -217,15 +220,17 @@ const defaultComponents = memoizeMarkdownComponents({
       {...props}
     />
   ),
-  pre: ({ className, ...props }) => (
-    <pre
-      className={cn(
-        "aui-md-pre overflow-x-auto rounded-t-none! rounded-b-lg bg-black p-4 text-white",
-        className,
-      )}
-      {...props}
-    />
-  ),
+  pre: ({ className, children, ...props }) => {
+    const codeElement = children as React.ReactElement;
+    const code = codeElement?.props?.children || '';
+    const language = codeElement?.props?.className?.replace('language-', '') || 'text';
+    
+    return (
+      <CodeBlock className={cn("my-4", className)}>
+        <CodeBlockCode code={code} language={language} />
+      </CodeBlock>
+    );
+  },
   code: function Code({ className, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock();
     return (

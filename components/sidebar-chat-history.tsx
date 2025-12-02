@@ -18,7 +18,7 @@ import { PlusIcon, Search, MessageSquare, Trash2 } from "lucide-react"
 import { Claude } from "@/components/claude"
 import ConversationRuntimeProvider from "@/components/conversation-runtime-provider"
 import { useConversationStore } from "@/lib/conversation-store"
-import { useState } from "react"
+import { useState, useCallback, useMemo } from "react"
 
 function SidebarWithChatHistory() {
   const { 
@@ -29,24 +29,24 @@ function SidebarWithChatHistory() {
     deleteConversation
   } = useConversationStore()
   
-  const conversationsByPeriod = getConversationsByPeriod()
+  const conversationsByPeriod = useMemo(() => getConversationsByPeriod(), [getConversationsByPeriod])
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     const newConversationId = addConversation({
       title: "New Conversation",
       messages: [],
     })
     setActiveConversation(newConversationId)
-  }
+  }, [addConversation, setActiveConversation])
 
-  const handleConversationClick = (conversationId: string) => {
+  const handleConversationClick = useCallback((conversationId: string) => {
     setActiveConversation(conversationId)
-  }
+  }, [setActiveConversation])
 
-  const handleDeleteConversation = (conversationId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = useCallback((conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     deleteConversation(conversationId)
-  }
+  }, [deleteConversation])
 
   const periods = [
     { key: 'today', label: 'Today', conversations: conversationsByPeriod.today },
