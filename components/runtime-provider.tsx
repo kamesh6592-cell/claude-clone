@@ -1,12 +1,23 @@
 "use client";
 
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import { useVercelUseChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { AssistantRuntimeProvider, useLocalRuntime } from "@assistant-ui/react";
+import { useChat } from "ai/react";
 import { type FC, type PropsWithChildren } from "react";
 
 const RuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
-  const runtime = useVercelUseChatRuntime({
+  const chat = useChat({
     api: "/api/chat",
+  });
+
+  const runtime = useLocalRuntime({
+    messages: chat.messages,
+    isRunning: chat.isLoading,
+    onNew: async (message) => {
+      await chat.append({
+        role: "user",
+        content: message.content.map(part => part.text || "").join(""),
+      });
+    },
   });
 
   return (
