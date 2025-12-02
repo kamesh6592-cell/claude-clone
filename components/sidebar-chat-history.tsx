@@ -14,160 +14,101 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { PlusIcon, Search } from "lucide-react"
+import { PlusIcon, Search, MessageSquare, Trash2 } from "lucide-react"
 import { Claude } from "@/components/claude"
-import RuntimeProvider from "@/components/runtime-provider"
-
-const conversationHistory = [
-  {
-    period: "Today",
-    conversations: [
-      {
-        id: "t1",
-        title: "Project Roadmap Discussion",
-        lastMessage:
-          "Let's prioritize the authentication features for the next sprint.",
-        timestamp: new Date().setHours(new Date().getHours() - 2),
-      },
-      {
-        id: "t2",
-        title: "API Documentation Review",
-        lastMessage:
-          "The endpoint descriptions need more detail about rate limiting.",
-        timestamp: new Date().setHours(new Date().getHours() - 5),
-      },
-      {
-        id: "t3",
-        title: "Frontend Bug Analysis",
-        lastMessage:
-          "I found the issue - we need to handle the null state in the user profile component.",
-        timestamp: new Date().setHours(new Date().getHours() - 8),
-      },
-    ],
-  },
-  {
-    period: "Yesterday",
-    conversations: [
-      {
-        id: "y1",
-        title: "Database Schema Design",
-        lastMessage:
-          "Let's add indexes to improve query performance on these tables.",
-        timestamp: new Date().setDate(new Date().getDate() - 1),
-      },
-      {
-        id: "y2",
-        title: "Performance Optimization",
-        lastMessage:
-          "The lazy loading implementation reduced initial load time by 40%.",
-        timestamp: new Date().setDate(new Date().getDate() - 1),
-      },
-    ],
-  },
-  {
-    period: "Last 7 days",
-    conversations: [
-      {
-        id: "w1",
-        title: "Authentication Flow",
-        lastMessage: "We should implement the OAuth2 flow with refresh tokens.",
-        timestamp: new Date().setDate(new Date().getDate() - 3),
-      },
-      {
-        id: "w2",
-        title: "Component Library",
-        lastMessage:
-          "These new UI components follow the design system guidelines perfectly.",
-        timestamp: new Date().setDate(new Date().getDate() - 5),
-      },
-      {
-        id: "w3",
-        title: "UI/UX Feedback",
-        lastMessage:
-          "The navigation redesign received positive feedback from the test group.",
-        timestamp: new Date().setDate(new Date().getDate() - 6),
-      },
-    ],
-  },
-  {
-    period: "Last month",
-    conversations: [
-      {
-        id: "m1",
-        title: "Initial Project Setup",
-        lastMessage:
-          "All the development environments are now configured consistently.",
-        timestamp: new Date().setDate(new Date().getDate() - 15),
-      },
-      {
-        id: "m2",
-        title: "Requirements Gathering",
-        lastMessage:
-          "The stakeholders approved the feature specifications document.",
-        timestamp: new Date().setDate(new Date().getDate() - 22),
-      },
-      {
-        id: "m3",
-        title: "Tech Stack Selection",
-        lastMessage:
-          "We decided on Next.js, Tailwind, and a serverless backend architecture.",
-        timestamp: new Date().setDate(new Date().getDate() - 28),
-      },
-      {
-        id: "m4",
-        title: "Project Planning",
-        lastMessage: "We need to create a project plan for the next sprint.",
-        timestamp: new Date().setDate(new Date().getDate() - 30),
-      },
-      {
-        id: "m5",
-        title: "Code Review",
-        lastMessage: "We need to review the code for the next sprint.",
-        timestamp: new Date().setDate(new Date().getDate() - 35),
-      },
-      {
-        id: "m6",
-        title: "Bug Discussion",
-        lastMessage: "We need to discuss the bugs for the next sprint.",
-        timestamp: new Date().setDate(new Date().getDate() - 37),
-      },
-      {
-        id: "m7",
-        title: "Project Planning",
-        lastMessage: "We need to create a project plan for the next sprint.",
-        timestamp: new Date().setDate(new Date().getDate() - 30),
-      },
-    ],
-  },
-]
+import ConversationRuntimeProvider from "@/components/conversation-runtime-provider"
+import { useConversationStore } from "@/lib/conversation-store"
+import { useState } from "react"
 
 function SidebarWithChatHistory() {
+  const { 
+    getConversationsByPeriod, 
+    setActiveConversation, 
+    activeConversationId,
+    addConversation,
+    deleteConversation
+  } = useConversationStore()
+  
+  const conversationsByPeriod = getConversationsByPeriod()
+
+  const handleNewChat = () => {
+    const newConversationId = addConversation({
+      title: "New Conversation",
+      messages: [],
+    })
+    setActiveConversation(newConversationId)
+  }
+
+  const handleConversationClick = (conversationId: string) => {
+    setActiveConversation(conversationId)
+  }
+
+  const handleDeleteConversation = (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    deleteConversation(conversationId)
+  }
+
+  const periods = [
+    { key: 'today', label: 'Today', conversations: conversationsByPeriod.today },
+    { key: 'yesterday', label: 'Yesterday', conversations: conversationsByPeriod.yesterday },
+    { key: 'lastWeek', label: 'Last 7 days', conversations: conversationsByPeriod.lastWeek },
+    { key: 'lastMonth', label: 'Last month', conversations: conversationsByPeriod.lastMonth },
+    { key: 'older', label: 'Older', conversations: conversationsByPeriod.older },
+  ]
+
   return (
     <Sidebar>
       <SidebarHeader className="flex flex-row items-center justify-between gap-2 px-2 py-4">
         <div className="flex flex-row items-center gap-2 px-2">
-          <div className="bg-primary/10 size-8 rounded-md"></div>
+          <div className="bg-primary/10 size-8 rounded-md flex items-center justify-center">
+            <MessageSquare className="size-4 text-primary" />
+          </div>
           <div className="text-md font-base text-primary tracking-tight">
-            zola.chat
+            Claude Chat
           </div>
         </div>
-        <Button variant="ghost" className="size-8">
-          <Search className="size-4" />
+        <Button variant="ghost" className="size-8" onClick={handleNewChat}>
+          <PlusIcon className="size-4" />
         </Button>
       </SidebarHeader>
       <SidebarContent className="pt-4">
-        {conversationHistory.map((conversation) => (
-          <SidebarGroup key={conversation.period}>
-            <SidebarGroupLabel>{conversation.period}</SidebarGroupLabel>
-            <SidebarMenu>
-              {conversation.conversations.map((conversation) => (
-                <SidebarMenuButton key={conversation.id}>
-                  <span>{conversation.title}</span>
-                </SidebarMenuButton>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
+        {periods.map((period) => (
+          period.conversations.length > 0 && (
+            <SidebarGroup key={period.key}>
+              <SidebarGroupLabel>{period.label}</SidebarGroupLabel>
+              <SidebarMenu>
+                {period.conversations.map((conversation) => (
+                  <div key={conversation.id} className="group relative">
+                    <SidebarMenuButton
+                      onClick={() => handleConversationClick(conversation.id)}
+                      className={`w-full justify-start ${
+                        activeConversationId === conversation.id ? 'bg-sidebar-accent' : ''
+                      }`}
+                    >
+                      <MessageSquare className="size-4" />
+                      <span className="truncate">{conversation.title}</span>
+                    </SidebarMenuButton>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => handleDeleteConversation(conversation.id, e)}
+                    >
+                      <Trash2 className="size-3" />
+                    </Button>
+                  </div>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          )
         ))}
+        {Object.values(conversationsByPeriod).every(arr => arr.length === 0) && (
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+            <MessageSquare className="size-8 mb-2" />
+            <p className="text-sm">No conversations yet</p>
+            <p className="text-xs">Start a new chat to begin</p>
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   )
@@ -187,9 +128,9 @@ function AppContent() {
       </header>
 
       <div className="flex-1 overflow-hidden">
-        <RuntimeProvider>
+        <ConversationRuntimeProvider>
           <Claude />
-        </RuntimeProvider>
+        </ConversationRuntimeProvider>
       </div>
     </main>
   )
