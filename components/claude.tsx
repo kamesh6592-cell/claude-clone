@@ -26,7 +26,7 @@ import { MarkdownText } from "./markdown-text";
 
 export const Claude: FC = () => {
   return (
-    <ThreadPrimitive.Root className="flex h-full flex-col items-stretch bg-[#F5F5F0] p-4 pt-16 font-serif dark:bg-[#2b2a27]">
+    <ThreadPrimitive.Root className="flex h-full flex-col items-stretch bg-[#F5F5F0] p-4 font-serif dark:bg-[#2b2a27]">
       <ThreadPrimitive.Viewport className="flex grow flex-col overflow-y-scroll">
         <ThreadPrimitive.Messages components={{ Message: ChatMessage }} />
         <div aria-hidden="true" className="h-4" />
@@ -64,7 +64,7 @@ export const Claude: FC = () => {
             </div>
             <button
               type="button"
-              className="flex h-8 min-w-16 items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 pr-2 pl-2.5 text-[#1a1a18] text-xs transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-[#f5f5f0] active:scale-[0.985] dark:text-[#eee] dark:hover:bg-[#393937]"
+                className="flex h-8 min-w-16 items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 pr-2 pl-2.5 text-[#1a1a18] text-xs transition duration-300 ease-out hover:bg-[#f5f5f0] active:scale-[0.985] dark:text-[#eee] dark:hover:bg-[#393937]"
             >
               <span className="font-serif text-[14px]">Sonnet 4.5</span>
               <ChevronDownIcon width={20} height={20} className="opacity-75" />
@@ -109,10 +109,10 @@ const ChatMessage: FC = () => {
               className="pointer-events-auto min-w-max translate-x-1 translate-y-4 rounded-lg border-[#00000015] border-[0.5px] bg-white/80 p-0.5 opacity-0 shadow-sm backdrop-blur-sm transition group-hover/user:translate-x-0.5 group-hover/user:opacity-100 dark:border-[#6c6a6040] dark:bg-[#1f1e1b]/80"
             >
               <div className="flex items-center text-[#6b6a68] dark:text-[#9a9893]">
-                <ActionBarPrimitive.Reload className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-transparent active:scale-95">
+                <ActionBarPrimitive.Reload className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-out hover:bg-transparent active:scale-95">
                   <ReloadIcon width={20} height={20} />
                 </ActionBarPrimitive.Reload>
-                <ActionBarPrimitive.Edit className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-transparent active:scale-95">
+                <ActionBarPrimitive.Edit className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-out hover:bg-transparent active:scale-95">
                   <Pencil1Icon width={20} height={20} />
                 </ActionBarPrimitive.Edit>
               </div>
@@ -141,16 +141,16 @@ const ChatMessage: FC = () => {
               className="pointer-events-auto flex w-full translate-y-full flex-col items-end px-2 pt-2 transition"
             >
               <div className="flex items-center text-[#6b6a68] dark:text-[#9a9893]">
-                <ActionBarPrimitive.Copy className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-transparent active:scale-95">
+                <ActionBarPrimitive.Copy className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-out hover:bg-transparent active:scale-95">
                   <ClipboardIcon width={20} height={20} />
                 </ActionBarPrimitive.Copy>
-                <ActionBarPrimitive.FeedbackPositive className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-transparent active:scale-95">
+                <ActionBarPrimitive.FeedbackPositive className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-out hover:bg-transparent active:scale-95">
                   <ThumbsUp width={16} height={16} />
                 </ActionBarPrimitive.FeedbackPositive>
-                <ActionBarPrimitive.FeedbackNegative className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-transparent active:scale-95">
+                <ActionBarPrimitive.FeedbackNegative className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-out hover:bg-transparent active:scale-95">
                   <ThumbsDown width={16} height={16} />
                 </ActionBarPrimitive.FeedbackNegative>
-                <ActionBarPrimitive.Reload className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] hover:bg-transparent active:scale-95">
+                <ActionBarPrimitive.Reload className="flex h-8 w-8 items-center justify-center rounded-md transition duration-300 ease-out hover:bg-transparent active:scale-95">
                   <ReloadIcon width={20} height={20} />
                 </ActionBarPrimitive.Reload>
               </div>

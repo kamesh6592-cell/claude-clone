@@ -1,14 +1,5 @@
-"use client";
-
-import { Claude } from "@/components/claude";
-import RuntimeProvider from "@/components/runtime-provider";
+import { SidebarChatHistory } from "@/components/sidebar-chat-history";
 
 export default function Home() {
-  return (
-    <main className="h-screen">
-      <RuntimeProvider>
-        <Claude />
-      </RuntimeProvider>
-    </main>
-  );
+  return <SidebarChatHistory />;
 }
