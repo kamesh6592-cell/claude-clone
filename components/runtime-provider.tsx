@@ -1,15 +1,12 @@
 "use client";
 
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { useVercelUseChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { type FC, type PropsWithChildren } from "react";
 
 const RuntimeProvider: FC<PropsWithChildren> = ({ children }) => {
-  const runtime = useChatRuntime({
+  const runtime = useVercelUseChatRuntime({
     api: "/api/chat",
-    onError: (error) => {
-      console.error("Runtime error:", error);
-    },
   });
 
   return (
